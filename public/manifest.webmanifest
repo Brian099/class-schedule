@@ -1,0 +1,20 @@
+{
+  "name": "课程表 · 家校助手",
+  "short_name": "课程表",
+  "description": "每日课表 · 天气提醒",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f8fc",
+  "theme_color": "#4c6ef5",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "/entrance-icon.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

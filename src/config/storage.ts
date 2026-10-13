@@ -30,9 +30,9 @@ const sanitizePeriods = (raw: unknown): PeriodConfig[] | null => {
     if (!isFiniteNumber(obj.index)) return null;
     if (!isString(obj.label) || !isString(obj.time)) return null;
     const p: PeriodConfig = { index: obj.index, label: obj.label, time: obj.time };
-    // 仅当旧数据显式写入 kind 且非 'class' 时保留,用于后续迁移到 subject.kind
+    // 节次类型是课表分界线的唯一依据,合法值原样保留
     const kindRaw = obj.kind;
-    if (kindRaw === 'break' || kindRaw === 'after-school') {
+    if (kindRaw === 'class' || kindRaw === 'break' || kindRaw === 'after-school') {
       p.kind = kindRaw;
     }
     out.push(p);
@@ -88,12 +88,7 @@ const sanitizeSubjects = (raw: unknown): SubjectItem[] | null => {
       name: obj.name,
       icon: obj.icon as SubjectItem['icon'],
       color: obj.color,
-      kind: 'class',
     };
-    const kindRaw = obj.kind;
-    if (kindRaw === 'break' || kindRaw === 'after-school' || kindRaw === 'class') {
-      s.kind = kindRaw;
-    }
     if (isString(obj.reminder) && obj.reminder) s.reminder = obj.reminder;
     if (isString(obj.reminderIcon) && obj.reminderIcon) {
       s.reminderIcon = obj.reminderIcon as SubjectItem['reminderIcon'];
@@ -108,43 +103,6 @@ const sanitizeSubjects = (raw: unknown): SubjectItem[] | null => {
     out.push(s);
   }
   return out;
-};
-
-// 老配置的 period.kind 迁移:根据 schedule[day][idx] 对应的 period.kind 回填 subject.kind
-// 仅在 subject 未显式声明 kind(或仍是默认 class)时应用,避免覆盖用户已配置的值
-const migrateKindFromPeriods = (
-  subjects: SubjectItem[],
-  periods: PeriodConfig[],
-  schedule: Record<Weekday, string[]>,
-  rawSubjects: unknown,
-): SubjectItem[] => {
-  const explicit = new Set<string>();
-  if (Array.isArray(rawSubjects)) {
-    for (const item of rawSubjects) {
-      if (!item || typeof item !== 'object') continue;
-      const obj = item as Record<string, unknown>;
-      if (isString(obj.name) && obj.name && obj.kind) explicit.add(obj.name);
-    }
-  }
-  const nameToKind = new Map<string, PeriodConfig['kind']>();
-  for (const day of WEEKDAYS) {
-    const row = schedule[day];
-    if (!row) continue;
-    row.forEach((name, idx) => {
-      if (!name || !name.trim()) return;
-      if (explicit.has(name)) return;
-      const p = periods[idx];
-      if (!p || !p.kind) return;
-      if (p.kind === 'class') return;
-      if (!nameToKind.has(name)) nameToKind.set(name, p.kind);
-    });
-  }
-  if (nameToKind.size === 0) return subjects;
-  return subjects.map(s => {
-    if (explicit.has(s.name)) return s;
-    const inferred = nameToKind.get(s.name);
-    return inferred ? { ...s, kind: inferred } : s;
-  });
 };
 
 const sanitizeHolidays = (raw: unknown): Holiday[] => {
@@ -169,10 +127,7 @@ const sanitizeStudent = (raw: unknown): Student | null => {
   const periods = sanitizePeriods(obj.periods) ?? DEFAULT_STUDENT.periods;
   const schedule =
     sanitizeSchedule(obj.schedule, periods.length) ?? DEFAULT_STUDENT.schedule;
-  const parsedSubjects = sanitizeSubjects(obj.subjects);
-  const subjects = parsedSubjects
-    ? migrateKindFromPeriods(parsedSubjects, periods, schedule, obj.subjects)
-    : parsedSubjects;
+  const subjects = sanitizeSubjects(obj.subjects);
   return {
     id: isString(obj.id) && obj.id ? obj.id : `student-${Math.random().toString(36).slice(2, 8)}`,
     title:

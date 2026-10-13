@@ -1,12 +1,20 @@
-# 打 tag(如 v1.0.0)时,自动构建多架构 Docker 镜像并推到
-# GitHub Container Registry:ghcr.io/brian099/class-schedule
-# (镜像名 class-schedule 与 GitHub 仓库名 Brian099/class-schedule 一致)
+# 推送到 main 或打 tag(如 v1.0.0)时,自动构建 Docker 镜像并同时推送到:
+#   - Docker Hub:      brian9909/class-schuedule
+#   - GitHub Container Registry: ghcr.io/brian099/class-schedule
+#   (compose 默认拉 GHCR,所以两条都推,改名/换源都不影响老用户)
 #
-# 用户拉取:docker pull ghcr.io/brian099/class-schedule:latest
+# 用户拉取:
+#   docker pull brian9909/class-schuedule:latest
+#   docker pull ghcr.io/brian099/class-schedule:latest
+#
+# 需要在仓库 Settings → Secrets and variables → Actions 里配置:
+#   DOCKERHUB_USERNAME  Docker Hub 用户名(brian9909)
+#   DOCKERHUB_TOKEN     Docker Hub 访问令牌(Access Token,不是登录密码)
 name: Build and Publish Docker Image
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   # 也允许在 Actions 页手动触发一次
   workflow_dispatch:
@@ -36,15 +44,24 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      # 根据 tag 自动生成镜像 tag:
-      #   v1.2.3 → 1.2.3 + 1.2 + latest
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 自动生成镜像 tag:
+      #   推 main          → latest
+      #   tag v1.2.3       → 1.2.3 + 1.2 + latest
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          # 镜像名固定成 class-schedule,不用 ${{ github.repository }},
+          # GHCR 名固定成 class-schedule,不用 ${{ github.repository }},
           # 这样 GitHub 仓库名和镜像名可以各自独立(比如仓库改名不影响镜像地址)
-          images: ghcr.io/${{ github.repository_owner }}/class-schedule
+          images: |
+            ghcr.io/brian099/class-schedule
+            brian9909/class-schuedule
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

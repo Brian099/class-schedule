@@ -18,11 +18,6 @@ import { useWeather } from './hooks/useWeather';
 import { SvgIcon } from './icons';
 import { currentSearch, linkProps } from './routes';
 import { getCurrentPeriodIndex } from './utils/timeSlot';
-import {
-  computeWeekParity,
-  createSubjectLookup,
-  resolveSubjectName,
-} from './data/subjects';
 import './App.css';
 
 const VALID_TABS: TabKey[] = ['today', 'memo', 'schedule'];
@@ -193,15 +188,13 @@ function App() {
       };
     }
     if (!today) return { label: '周末', hint: '好好休息', tone: 'sunshine' };
-    const subjectLookup = createSubjectLookup(subjects);
-    const parity = computeWeekParity(now, activeStudent.termStart);
-    // 'empty' 表示该节次没排课:既不是正课也不是休息,不参与课程计数,
-    // 否则周六启用但没排课时会显示"共 8 节课"
+    // 节次类型由后台按节次标记;'empty' 表示该节次没排课:既不是正课也不是休息,
+    // 不参与课程计数,否则周六启用但没排课时会显示"共 8 节课"
     const kindAt = (idx: number): 'class' | 'break' | 'after-school' | 'empty' => {
+      const kind = periods[idx]?.kind ?? 'class';
+      if (kind === 'break') return 'break';
       const raw = schedule[today]?.[idx] ?? '';
-      if (!raw.trim()) return 'empty';
-      const resolved = resolveSubjectName(raw, subjects, parity);
-      return subjectLookup(resolved).kind ?? 'class';
+      return raw.trim() ? kind : 'empty';
     };
     const classPeriods = periods.filter((_, i) => {
       const k = kindAt(i);

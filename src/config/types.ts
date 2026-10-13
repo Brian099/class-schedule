@@ -29,7 +29,7 @@ export interface PeriodConfig {
   index: number;
   label: string;
   time: string;
-  // 类型已迁移到 SubjectItem.kind;此字段保留仅用于旧配置兼容读取,不再作为逻辑依据
+  // 节次类型:决定该节是正课 / 课间休息 / 课后服务,是课表分界线与状态文案的唯一依据
   kind?: PeriodKind;
 }
 
@@ -44,7 +44,6 @@ export interface SubjectItem {
   weekMode?: WeekMode;
   oddSubject?: string;
   evenSubject?: string;
-  kind?: PeriodKind;
   iconImage?: string; // 上传的自定义图标 dataURL,优先级高于 icon
   hideIcon?: boolean; // 不显示图标
 }

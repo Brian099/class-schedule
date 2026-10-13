@@ -72,7 +72,6 @@ export default function SubjectsSection({ student, onChange }: Props) {
       name: `课程${idx}`,
       icon: 'book',
       color: preset,
-      kind: 'class',
     };
     onChange({ subjects: [...student.subjects, next] });
     setEditingIdx(student.subjects.length);
@@ -105,16 +104,6 @@ export default function SubjectsSection({ student, onChange }: Props) {
             </span>
             {s.weekMode === 'biweekly' && (
               <span className="admin-subject-card-week">单/双</span>
-            )}
-            {s.kind === 'break' && (
-              <span className="admin-subject-card-kind admin-subject-card-kind-break">
-                休息
-              </span>
-            )}
-            {s.kind === 'after-school' && (
-              <span className="admin-subject-card-kind admin-subject-card-kind-after">
-                课后
-              </span>
             )}
             {s.reminder && (
               <span className="admin-subject-card-hint" title={s.reminder}>

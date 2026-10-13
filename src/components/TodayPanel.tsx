@@ -99,7 +99,7 @@ export default function TodayPanel({
   const resolvedList = todayList.map(name =>
     resolveSubjectName(name, subjects, parity),
   );
-  const kindsForDay = resolvedList.map(n => getSubject(n).kind ?? 'class');
+  const kindsForDay = periods.map(p => p.kind ?? 'class');
   const titleLabel =
     offsetDays >= 2
       ? `${offsetDays}天后课表`
@@ -161,7 +161,7 @@ export default function TodayPanel({
           const subject = getSubject(name);
           const period = periods[idx];
           if (!period) return null;
-          const kind = subject.kind ?? 'class';
+          const kind = period.kind ?? 'class';
           const isEmpty = !name.trim() && kind !== 'break';
           const isCurrent = timeBased && currentPeriodIndex === idx;
           const status = timeBased

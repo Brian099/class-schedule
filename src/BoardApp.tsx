@@ -335,8 +335,8 @@ export default function BoardApp() {
                   if (!period) return null;
                   const name = resolveSubjectName(rawName, subjects, parity);
                   const subject = getSubject(name);
-                  // 类型已迁移到课程库:该格课程 kind === 'break' 才过滤
-                  if (subject.kind === 'break') return null;
+                  // 节次类型为「课间休息」时,看板不展示这一节
+                  if (period.kind === 'break') return null;
                   // currentPeriodIndex 在非今天时已为 null,这里再判一次 offsetDays
                   // 是为了防止未来改动漏掉(二元 isTomorrow 会漏掉 offsetDays>=2)
                   const isCurrent =

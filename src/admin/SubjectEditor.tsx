@@ -308,27 +308,6 @@ export default function SubjectEditor({
           </div>
 
           <div className="admin-field">
-            <label className="admin-label" htmlFor="subj-kind">
-              节次类型
-            </label>
-            <select
-              id="subj-kind"
-              className="admin-input"
-              value={draft.kind ?? 'class'}
-              onChange={e =>
-                updateDraft({ kind: e.target.value as SubjectItem['kind'] })
-              }
-            >
-              <option value="class">上课</option>
-              <option value="break">休息 · 午休</option>
-              <option value="after-school">课后服务</option>
-            </select>
-            <div className="admin-inline-hint">
-              决定上课时显示的状态文案
-            </div>
-          </div>
-
-          <div className="admin-field">
             <label className="admin-label" htmlFor="subj-reminder">
               备注（上课提醒）
             </label>

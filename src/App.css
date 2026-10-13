@@ -2130,7 +2130,8 @@
     font-size: 14px;
   }
   .schedule-grid {
-    --grid-cols: 80px repeat(var(--visible-days, 5), minmax(0, 1fr));
+    --grid-lead: 80px;
+    --grid-cols: var(--grid-lead) repeat(var(--visible-days, 5), minmax(0, 1fr));
     --grid-gap-x: 6px;
     --grid-gap-y: 8px;
   }
@@ -2157,6 +2158,9 @@
     font-size: 12.5px;
     justify-content: center;
     min-height: 30px;
+  }
+  .schedule-today-frame {
+    border-radius: 10px;
   }
   .subject-icon {
     display: none !important;
@@ -2198,7 +2202,8 @@
     font-size: 22px;
   }
   .schedule-grid {
-    --grid-cols: 68px repeat(var(--visible-days, 5), minmax(0, 1fr));
+    --grid-lead: 68px;
+    --grid-cols: var(--grid-lead) repeat(var(--visible-days, 5), minmax(0, 1fr));
     --grid-gap-x: 6px;
     --grid-gap-y: 8px;
   }
@@ -2877,13 +2882,43 @@
 }
 
 .schedule-grid {
-  --grid-cols: 108px repeat(var(--visible-days, 5), minmax(0, 1fr));
+  --grid-lead: 108px;
+  --grid-cols: var(--grid-lead) repeat(var(--visible-days, 5), minmax(0, 1fr));
   --grid-gap-x: 8px;
   --grid-gap-y: 10px;
+  --grid-pad-top: 6px;
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding-top: 6px;
+  padding-top: var(--grid-pad-top);
+}
+
+/* 当天课程外框:绝对定位覆盖「节次列右侧、当天那一列」,
+   高度贯穿表头与全部节次,用圆角矩形把当天的课整体框起来 */
+.schedule-today-frame {
+  --frame-pad-x: 3px;
+  --frame-pad-y: 4px;
+  position: absolute;
+  top: calc(var(--grid-pad-top) - var(--frame-pad-y));
+  bottom: calc(0px - var(--frame-pad-y));
+  left: calc(
+    var(--grid-lead) + var(--grid-gap-x) - var(--frame-pad-x) + var(--today-index) *
+      (
+        (100% - var(--grid-lead) - var(--visible-days, 5) * var(--grid-gap-x)) /
+          var(--visible-days, 5) + var(--grid-gap-x)
+      )
+  );
+  width: calc(
+    (100% - var(--grid-lead) - var(--visible-days, 5) * var(--grid-gap-x)) /
+      var(--visible-days, 5) + var(--frame-pad-x) * 2
+  );
+  border: 2px solid var(--grape);
+  /* 与 .subject-chip 的圆角保持一致 */
+  border-radius: 12px;
+  background: rgba(169, 123, 245, 0.06);
+  pointer-events: none;
+  z-index: 2;
 }
 
 .schedule-head-row,
@@ -2938,6 +2973,8 @@
   position: absolute;
   top: -7px;
   right: 6px;
+  /* 高于 .schedule-today-frame(z-index:2),否则角标会被当天外框的线框压住 */
+  z-index: 3;
   background: var(--grape-deep);
   color: #fff;
   font-size: 10px;
@@ -2983,12 +3020,15 @@
   background: var(--joy-soft);
 }
 
-.row-after-school-start {
+/* 分界线:上午/下午之间、正课/课后服务之间各画一条 */
+.row-after-school-start,
+.row-noon-start {
   position: relative;
   padding-top: 12px;
 }
 
-.row-after-school-start::before {
+.row-after-school-start::before,
+.row-noon-start::before {
   content: '';
   position: absolute;
   left: 4px;

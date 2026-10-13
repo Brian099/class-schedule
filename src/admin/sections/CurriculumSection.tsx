@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import type {
   Student,
   PeriodConfig,
+  PeriodKind,
   Weekday,
 } from '../../config/types';
 import { WEEKDAYS_FULL } from '../../config/types';
@@ -19,6 +20,13 @@ interface Props {
 }
 
 
+
+// 节次类型快捷标记:决定该节属于正课 / 课间休息 / 课后服务,课表分界线据此绘制
+const PERIOD_KIND_OPTIONS: { value: PeriodKind; label: string }[] = [
+  { value: 'class', label: '正课' },
+  { value: 'break', label: '课间' },
+  { value: 'after-school', label: '课后' },
+];
 
 const nextIndex = (list: PeriodConfig[]): number => {
   const max = list.reduce((acc, p) => Math.max(acc, p.index), 0);
@@ -109,6 +117,7 @@ export default function CurriculumSection({ student, onChange }: Props) {
       index: nextIndex(student.periods),
       label: `第${student.periods.length + 1}节`,
       time: `${start} - ${end}`,
+      kind: 'class',
     };
     commitPeriods([...student.periods, next]);
   };
@@ -149,7 +158,7 @@ export default function CurriculumSection({ student, onChange }: Props) {
     <div className="admin-section">
       <h3 className="admin-subsection-title">一周课表</h3>
       <p className="admin-subsection-hint">
-        左列改节次名与时间,每格从课程库中选择
+        左列改节次名、时间与类型(正课 / 课间 / 课后),每格从课程库中选择
       </p>
 
       <div className="admin-weekend-toggles">
@@ -238,6 +247,26 @@ export default function CurriculumSection({ student, onChange }: Props) {
                   />
                 </div>
               )}
+              <div
+                className="admin-schedule-period-kinds"
+                role="group"
+                aria-label="节次类型"
+              >
+                {PERIOD_KIND_OPTIONS.map(opt => {
+                  const active = (period.kind ?? 'class') === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`admin-kind-btn${active ? ' is-active' : ''}`}
+                      aria-pressed={active}
+                      onClick={() => updatePeriodAt(idx, { kind: opt.value })}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
             {visibleWeekdays.map(day => {
               const value = student.schedule[day][idx] ?? '';

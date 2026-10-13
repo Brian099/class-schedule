@@ -32,6 +32,11 @@ const AVATAR_LIMIT = 16 * 1024 * 1024;
 const PRUNE_GRACE_MS = Number(process.env.PRUNE_GRACE_HOURS || 6) * 60 * 60 * 1000;
 const SESSION_COOKIE = 'kb_sid';
 /**
+ * 家长后台密码(每个学生一把)的会话 Cookie。故意与超管会话分开:
+ * 同一浏览器可能既登录着超管、又要进某个学生的家长后台,两个会话互不覆盖。
+ */
+const ADMIN_COOKIE = 'kb_asid';
+/**
  * 对外访问的根地址(协议+域名+端口),用来把 og:image / og:url 拼成绝对 URL ——
  * 微信/QQ 抓图文卡片时相对路径抓不到,必须绝对。反代后面服务端看到的 Host 往往不是
  * 用户实际访问的域名,所以优先用显式配置的 PUBLIC_ORIGIN(如 https://kcb.uzuy.cn:88),
@@ -100,6 +105,13 @@ const clearedCookie = () =>
   `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
 
 const currentToken = (req) => parseCookies(req.headers.cookie)[SESSION_COOKIE] || '';
+
+const adminCookie = (token) =>
+  `${ADMIN_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Lax`;
+const clearedAdminCookie = () =>
+  `${ADMIN_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+const currentAdminToken = (req) =>
+  parseCookies(req.headers.cookie)[ADMIN_COOKIE] || '';
 
 const asString = (v) => (typeof v === 'string' ? v : '');
 
@@ -686,6 +698,95 @@ const handleApi = async (req, res, url) => {
     res.setHeader('Set-Cookie', clearedCookie());
     sendJson(res, 200, { ok: true });
     return true;
+  }
+
+  /* -------------------------- 家长后台密码 -------------------------- */
+  // 每个学生一把密码,守护其 /admin 页面:首次访问走 setup,之后走 login。
+  // 重置只对超管开放(需超管会话)。写接口本身仍是开放的(见文件头安全说明),
+  // 这层密码拦的是"页面入口",不是后端数据 —— 与项目"家庭内网"的定位一致。
+
+  if (pathname.startsWith('/api/student-admin/')) {
+    const action = pathname.slice('/api/student-admin/'.length);
+    const studentId = asString(url.searchParams.get('id')).trim();
+    const scope = studentId ? `admin:${studentId}` : '';
+    const studentExists = async () => {
+      const cfg = await store.readConfig();
+      return (
+        !!studentId &&
+        Array.isArray(cfg?.students) &&
+        cfg.students.some((s) => s && s.id === studentId)
+      );
+    };
+
+    if (action === 'status' && method === 'GET') {
+      sendJson(res, 200, {
+        initialized: await store.hasAdminPassword(studentId),
+        authed:
+          !!scope && (await store.isSessionValid(currentAdminToken(req), scope)),
+      });
+      return true;
+    }
+
+    if (action === 'setup' && method === 'POST') {
+      if (!(await studentExists())) {
+        sendJson(res, 404, { error: '学生不存在' });
+        return true;
+      }
+      if (await store.hasAdminPassword(studentId)) {
+        sendJson(res, 409, { error: '已设置密码,请直接登录' });
+        return true;
+      }
+      const body = await readJsonBody(req, 1 << 16);
+      const password = asString(body?.password);
+      if (password.length < 4) {
+        sendJson(res, 400, { error: '密码至少 4 位' });
+        return true;
+      }
+      await store.setAdminPassword(studentId, password);
+      const token = await store.createSession(scope);
+      res.setHeader('Set-Cookie', adminCookie(token));
+      sendJson(res, 200, { ok: true });
+      return true;
+    }
+
+    if (action === 'login' && method === 'POST') {
+      if (!(await studentExists())) {
+        sendJson(res, 404, { error: '学生不存在' });
+        return true;
+      }
+      if (!(await store.hasAdminPassword(studentId))) {
+        sendJson(res, 409, { error: '尚未设置密码' });
+        return true;
+      }
+      const body = await readJsonBody(req, 1 << 16);
+      const password = asString(body?.password);
+      if (!(await store.verifyAdminPassword(studentId, password))) {
+        sendJson(res, 401, { error: '密码错误' });
+        return true;
+      }
+      const token = await store.createSession(scope);
+      res.setHeader('Set-Cookie', adminCookie(token));
+      sendJson(res, 200, { ok: true });
+      return true;
+    }
+
+    if (action === 'logout' && method === 'POST') {
+      await store.dropSession(currentAdminToken(req));
+      res.setHeader('Set-Cookie', clearedAdminCookie());
+      sendJson(res, 200, { ok: true });
+      return true;
+    }
+
+    if (action === 'reset' && method === 'POST') {
+      if (!(await store.isSessionValid(currentToken(req), 'superadmin'))) {
+        sendJson(res, 401, { error: '需要超管登录' });
+        return true;
+      }
+      await store.clearAdminPassword(studentId);
+      if (scope) await store.dropSessionsForScope(scope);
+      sendJson(res, 200, { ok: true });
+      return true;
+    }
   }
 
   /* -------------------------- 外网代理 -------------------------- */

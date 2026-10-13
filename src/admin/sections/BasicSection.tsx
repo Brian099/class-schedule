@@ -9,7 +9,11 @@ import {
   type NmcCity,
 } from '../../utils/weather';
 import AvatarCropModal from '../AvatarCropModal';
-import { uploadAvatar } from '../../api/client';
+import {
+  fetchStudentAdminGate,
+  resetStudentAdminPassword,
+  uploadAvatar,
+} from '../../api/client';
 
 const AVATAR_PRESETS: string[] = Array.from({ length: 25 }, (_, i) =>
   `/avatars/avatar-${String(i + 1).padStart(2, '0')}.jpg`,
@@ -120,6 +124,48 @@ export default function BasicSection({
   const [selectedCityCode, setSelectedCityCode] = useState<string>('');
   const [loadingProvinces, setLoadingProvinces] = useState(false);
   const [loadingCities, setLoadingCities] = useState(false);
+
+  // 家长后台密码:仅超管可见,用来查看状态并重置
+  const [pwdSet, setPwdSet] = useState<boolean | null>(null);
+  const [pwdBusy, setPwdBusy] = useState(false);
+  const [pwdMsg, setPwdMsg] = useState('');
+
+  useEffect(() => {
+    if (!superMode) return;
+    let cancelled = false;
+    setPwdSet(null);
+    fetchStudentAdminGate(student.id)
+      .then(g => {
+        if (!cancelled) setPwdSet(g.initialized);
+      })
+      .catch(() => {
+        if (!cancelled) setPwdSet(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [superMode, student.id]);
+
+  const handleResetPwd = async () => {
+    if (
+      !window.confirm(
+        '确定重置该学生的家长后台密码?重置后已登录的设备会立即失效,下次打开 /admin 需重新设置。',
+      )
+    ) {
+      return;
+    }
+    setPwdBusy(true);
+    setPwdMsg('');
+    try {
+      await resetStudentAdminPassword(student.id);
+      setPwdSet(false);
+      setPwdMsg('已重置,下次打开 /admin 时需重新设置密码');
+    } catch (e) {
+      setPwdMsg(e instanceof Error ? e.message : '重置失败');
+    } finally {
+      setPwdBusy(false);
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -410,8 +456,8 @@ export default function BasicSection({
 
       {superMode && (
         <>
-          <h3 className="admin-subsection-title">底部菜单</h3>
-          <p className="admin-subsection-hint">关闭后家长端不显示该 tab</p>
+          <h3 className="admin-subsection-title">页面菜单</h3>
+          <p className="admin-subsection-hint">关闭后页面不显示该入口，对应页面无法使用</p>
         </>
       )}
       {superMode && (
@@ -442,6 +488,37 @@ export default function BasicSection({
               </span>
             </label>
           </div>
+        </div>
+      )}
+
+      {superMode && (
+        <>
+          <h3 className="admin-subsection-title">家长后台密码</h3>
+          <p className="admin-subsection-hint">
+            进入该学生的 /admin 页面需要此密码,首次访问时由使用者设置
+          </p>
+        </>
+      )}
+      {superMode && (
+        <div className="admin-field">
+          <div className="admin-inline-hint">
+            {pwdSet === null
+              ? '状态读取中…'
+              : pwdSet
+                ? '已设置密码'
+                : '未设置密码(首次打开 /admin 时会提示设置)'}
+          </div>
+          <div className="admin-full-url-actions">
+            <button
+              type="button"
+              className="admin-btn admin-btn-mini admin-btn-danger"
+              disabled={pwdBusy || pwdSet !== true}
+              onClick={handleResetPwd}
+            >
+              {pwdBusy ? '重置中…' : '重置密码'}
+            </button>
+          </div>
+          {pwdMsg && <div className="admin-inline-hint">{pwdMsg}</div>}
         </div>
       )}
 

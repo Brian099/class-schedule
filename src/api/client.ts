@@ -207,6 +207,48 @@ export async function authLogout(): Promise<void> {
   }
 }
 
+/* ------------------------------ 家长后台密码 ------------------------------ */
+/**
+ * 每个学生的 /admin 页面密码。独立于超管账号:首次访问走 setup,之后走 login,
+ * 超管可在后台 reset(重置后该学生名下已登录的家长会话一并失效)。
+ */
+export interface StudentAdminGate {
+  /** 该学生是否已设置过家长密码 */
+  initialized: boolean;
+  /** 当前浏览器是否已通过该学生的密码校验 */
+  authed: boolean;
+}
+
+export async function fetchStudentAdminGate(id: string): Promise<StudentAdminGate> {
+  const data = await fetchJson(
+    `/api/student-admin/status?id=${encodeURIComponent(id)}`,
+  );
+  return { initialized: !!data?.initialized, authed: !!data?.authed };
+}
+
+export async function setupStudentAdmin(id: string, password: string): Promise<void> {
+  await fetchJson(`/api/student-admin/setup?id=${encodeURIComponent(id)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+}
+
+export async function loginStudentAdmin(id: string, password: string): Promise<void> {
+  await fetchJson(`/api/student-admin/login?id=${encodeURIComponent(id)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ password }),
+  });
+}
+
+/** 仅超管会话可调用:清掉该学生的家长密码 */
+export async function resetStudentAdminPassword(id: string): Promise<void> {
+  await fetchJson(`/api/student-admin/reset?id=${encodeURIComponent(id)}`, {
+    method: 'POST',
+  });
+}
+
 /* ------------------------------ 跨设备轮询同步 ------------------------------ */
 
 let pollTimer: ReturnType<typeof setInterval> | null = null;

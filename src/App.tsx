@@ -408,6 +408,12 @@ function App() {
       <footer className="app-footer">
         <SvgIcon name="book" size={16} />
         <span>好好学习，天天向上</span>
+        {showAdmin && (
+          // 家长管理入口:进 /superadmin(需登录),带上 ?id= 保留当前学生上下文
+          <a className="app-footer-admin" {...linkProps(`/superadmin${currentSearch()}`)}>
+            家长管理
+          </a>
+        )}
       </footer>
 
       <BottomNav />

@@ -20,6 +20,7 @@ import EntranceGate from './EntranceGate.tsx';
 const AdminApp = lazy(() => import('./admin/AdminApp.tsx'));
 const BoardApp = lazy(() => import('./BoardApp.tsx'));
 const SuperadminAuth = lazy(() => import('./admin/SuperadminAuth.tsx'));
+import AdminGate from './admin/AdminGate.tsx';
 import { hasCredentials, loadSession, logout } from './admin/authStorage.ts';
 import { CONFIG_UPDATED_EVENT, loadConfig } from './config/storage.ts';
 import { bootstrap, startRevisionPolling } from './api/client.ts';
@@ -181,14 +182,14 @@ function Root() {
   }
 
   if (mode === 'board') return <BoardApp />;
-  // 家长免密入口,但 showAdmin 关闭时必须真正拒绝(此前仅隐藏侧边栏入口,
-  // 手敲 /admin/curriculum 仍可改课表)
+  // 家长后台:先过 showAdmin 开关(关闭时拒绝),再过"该学生的家长密码"闸门 ——
+  // 首次访问引导设置密码,之后需输入密码才能进(超管可在后台重置该密码)
   if (mode === 'admin') {
     const student = loadConfig().students.find(s => s.id === rawId);
     if (student?.showAdmin === false && !authed) {
       return <App />;
     }
-    return <AdminApp />;
+    return <AdminGate studentId={rawId} studentTitle={student?.title} />;
   }
   return <App />;
 }

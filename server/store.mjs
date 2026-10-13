@@ -24,6 +24,7 @@ export const CACHE_DIR = path.join(DATA_DIR, 'cache');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const MEMOS_FILE = path.join(DATA_DIR, 'memos.json');
 const AUTH_FILE = path.join(DATA_DIR, 'auth.json');
+const ADMIN_AUTH_FILE = path.join(DATA_DIR, 'admin-auth.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -366,6 +367,47 @@ export const verifyCredentials = async (username, password) => {
   return timingSafeEqual(a, b);
 };
 
+/* ------------------------------- 家长后台密码 ------------------------------- */
+// 每个学生一把密码,用来守护该学生的 /admin 页面。独立于超管账号,存在
+// admin-auth.json(同样只存 scrypt 加盐哈希),不写进 config.json —— 配置会随
+// bootstrap 发到每个浏览器,凭据不该混在里面。
+
+export const readAdminAuth = () => readJson(ADMIN_AUTH_FILE);
+
+export const hasAdminPassword = async (studentId) => {
+  if (!studentId) return false;
+  const all = await readAdminAuth();
+  const rec = all && typeof all === 'object' ? all[studentId] : null;
+  return !!(rec && typeof rec.hash === 'string' && typeof rec.salt === 'string');
+};
+
+export const setAdminPassword = async (studentId, password) => {
+  const all = (await readAdminAuth()) || {};
+  const salt = randomBytes(16).toString('hex');
+  const hash = await hashPassword(password, salt);
+  all[studentId] = { salt, hash, createdAt: Date.now() };
+  await writeFileAtomic(ADMIN_AUTH_FILE, JSON.stringify(all));
+};
+
+export const verifyAdminPassword = async (studentId, password) => {
+  const all = await readAdminAuth();
+  const rec = all && typeof all === 'object' ? all[studentId] : null;
+  if (!rec || typeof rec.hash !== 'string' || typeof rec.salt !== 'string') return false;
+  const hash = await hashPassword(password, rec.salt);
+  const a = Buffer.from(hash, 'hex');
+  const b = Buffer.from(rec.hash, 'hex');
+  if (a.length !== b.length) return false;
+  return timingSafeEqual(a, b);
+};
+
+/** 重置:删掉该学生的密码,下次打开 /admin 会重新走"设置密码" */
+export const clearAdminPassword = async (studentId) => {
+  const all = (await readAdminAuth()) || {};
+  if (!studentId || !all[studentId]) return;
+  delete all[studentId];
+  await writeFileAtomic(ADMIN_AUTH_FILE, JSON.stringify(all));
+};
+
 /* ------------------------------- 会话 ------------------------------- */
 
 let sessionsCache = null;
@@ -377,28 +419,43 @@ const loadSessions = async () => {
   return sessionsCache;
 };
 
+/**
+ * 会话记录格式:sessions[token] = { exp, scope }。
+ * scope 区分会话用途 —— 'superadmin' 或 'admin:<学生id>'(学生家长后台),
+ * 校验时按作用域比对,两种登录互不干扰、可共存。
+ * 兼容旧格式(值为裸数字,一律视为超管会话),升级后老会话不掉线。
+ */
+const sessionExp = (rec) =>
+  typeof rec === 'number' ? rec : rec && typeof rec.exp === 'number' ? rec.exp : 0;
+const sessionScope = (rec) =>
+  rec && typeof rec === 'object' && typeof rec.scope === 'string'
+    ? rec.scope
+    : 'superadmin';
+
 const persistSessions = async () => {
   const sessions = await loadSessions();
   const now = Date.now();
-  for (const [token, exp] of Object.entries(sessions)) {
-    if (typeof exp !== 'number' || exp < now) delete sessions[token];
+  for (const [token, rec] of Object.entries(sessions)) {
+    if (sessionExp(rec) <= now) delete sessions[token];
   }
   await writeFileAtomic(SESSIONS_FILE, JSON.stringify(sessions));
 };
 
-export const createSession = async () => {
+export const createSession = async (scope = 'superadmin') => {
   const sessions = await loadSessions();
   const token = randomBytes(32).toString('hex');
-  sessions[token] = Date.now() + SESSION_TTL_MS;
+  sessions[token] = { exp: Date.now() + SESSION_TTL_MS, scope };
   await persistSessions();
   return token;
 };
 
-export const isSessionValid = async (token) => {
+export const isSessionValid = async (token, scope = 'superadmin') => {
   if (!token) return false;
   const sessions = await loadSessions();
-  const exp = sessions[token];
-  return typeof exp === 'number' && exp > Date.now();
+  const rec = sessions[token];
+  if (!rec) return false;
+  if (sessionExp(rec) <= Date.now()) return false;
+  return sessionScope(rec) === scope;
 };
 
 export const dropSession = async (token) => {
@@ -414,4 +471,17 @@ export const dropSession = async (token) => {
 export const dropAllSessions = async () => {
   sessionsCache = {};
   await writeFileAtomic(SESSIONS_FILE, JSON.stringify({}));
+};
+
+/** 某个作用域失效时(如重置某学生的家长密码),清掉它名下的所有会话 */
+export const dropSessionsForScope = async (scope) => {
+  const sessions = await loadSessions();
+  let changed = false;
+  for (const [token, rec] of Object.entries(sessions)) {
+    if (sessionScope(rec) === scope) {
+      delete sessions[token];
+      changed = true;
+    }
+  }
+  if (changed) await persistSessions();
 };

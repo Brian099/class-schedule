@@ -107,6 +107,12 @@ const buildBoardUrl = (studentId: string): string => {
   return `${window.location.origin}/board?id=${encodeURIComponent(studentId)}`;
 };
 
+/** 学生主页地址:带 ?id=,不带页内 hash(打开默认即「今日」) */
+const buildHomeUrl = (studentId: string): string => {
+  if (typeof window === 'undefined') return '';
+  return `${window.location.origin}/?id=${encodeURIComponent(studentId)}`;
+};
+
 export default function BasicSection({
   student,
   onChange,
@@ -272,6 +278,17 @@ export default function BasicSection({
     }
   };
 
+  const homeUrl = buildHomeUrl(student.id);
+  const [homeCopied, setHomeCopied] = useState(false);
+
+  const handleCopyHome = async () => {
+    const ok = await copyTo(homeUrl);
+    if (ok) {
+      setHomeCopied(true);
+      setTimeout(() => setHomeCopied(false), 1600);
+    }
+  };
+
   const [uploading, setUploading] = useState(false);
   const [cropFile, setCropFile] = useState<File | null>(null);
 
@@ -398,6 +415,35 @@ export default function BasicSection({
           placeholder="分享到微信时卡片的描述，留空自动生成"
           onChange={e => onChange({ shareDescription: e.target.value })}
         />
+      </div>
+
+      <div className="admin-field">
+        <label className="admin-label">主页访问地址</label>
+        <div className="admin-full-url">
+          <code className="admin-full-url-text" title={homeUrl}>
+            {homeUrl || '—'}
+          </code>
+          <div className="admin-full-url-actions">
+            <a
+              className="admin-btn admin-btn-mini admin-btn-sky"
+              href={homeUrl}
+              target="_blank"
+              rel="noreferrer"
+            >
+              打开
+            </a>
+            <button
+              type="button"
+              className={`admin-btn admin-btn-mini admin-btn-grass${homeCopied ? ' admin-btn-primary' : ''}`}
+              onClick={handleCopyHome}
+            >
+              {homeCopied ? '已复制' : '复制链接'}
+            </button>
+          </div>
+        </div>
+        <div className="admin-inline-hint">
+          学生日常查看课表的入口,必须带 ?id=
+        </div>
       </div>
 
       {superMode && (

@@ -1,7 +1,8 @@
 # 推送到 main 或打 tag(如 v1.0.0)时,自动构建 Docker 镜像并同时推送到:
 #   - Docker Hub:      brian9909/class-schuedule
 #   - GitHub Container Registry: ghcr.io/brian099/class-schedule
-#   (compose 默认拉 GHCR,所以两条都推,改名/换源都不影响老用户)
+# 两处都推:compose 默认拉 Docker Hub,GHCR 作为备用源,改名/换源都不影响老用户。
+# 推送成功后,再把仓库 README.md 同步到 Docker Hub 仓库介绍(Overview)。
 #
 # 用户拉取:
 #   docker pull brian9909/class-schuedule:latest
@@ -81,3 +82,14 @@ jobs:
           # 让下次构建复用缓存,加速
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      # 把仓库根 README.md 同步到 Docker Hub 仓库介绍(Overview),
+      # 保证镜像页文档与仓库一致;复用上面同一组 Docker Hub 凭据
+      - name: Sync README to Docker Hub
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: brian9909/class-schuedule
+          short-description: 课程表 + 天气 + 备忘 + 展示看板,家校一体化应用(React + 零依赖 Node)
+          readme-filepath: ./README.md

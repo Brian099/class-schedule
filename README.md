@@ -22,7 +22,8 @@
 ```yaml
 services:
   class-schedule:
-    image: ghcr.io/brian099/class-schedule:latest
+    # Docker Hub 镜像;也可改用 GHCR:ghcr.io/brian099/class-schedule:latest
+    image: brian9909/class-schuedule:latest
     container_name: class-schedule
     restart: unless-stopped
     ports:

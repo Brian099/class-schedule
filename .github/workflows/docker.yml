@@ -1,8 +1,8 @@
 # 打 tag(如 v1.0.0)时,自动构建多架构 Docker 镜像并推到
-# GitHub Container Registry:ghcr.io/mrbanke/class-schedule
-# (镜像名 class-schedule 与 GitHub 仓库名 MRBANKE/class-schedule 一致)
+# GitHub Container Registry:ghcr.io/brian099/class-schedule
+# (镜像名 class-schedule 与 GitHub 仓库名 Brian099/class-schedule 一致)
 #
-# 用户拉取:docker pull ghcr.io/mrbanke/class-schedule:latest
+# 用户拉取:docker pull ghcr.io/brian099/class-schedule:latest
 name: Build and Publish Docker Image
 
 on:

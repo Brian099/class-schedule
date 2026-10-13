@@ -22,7 +22,7 @@
 ```yaml
 services:
   class-schedule:
-    image: ghcr.io/mrbanke/class-schedule:latest
+    image: ghcr.io/brian099/class-schedule:latest
     container_name: class-schedule
     restart: unless-stopped
     ports:
@@ -50,7 +50,7 @@ docker compose up -d
 想改代码或者不想拉预构建镜像:
 
 ```bash
-git clone https://github.com/MRBANKE/class-schedule.git
+git clone https://github.com/Brian099/class-schedule.git
 cd class-schedule
 docker compose up -d --build
 ```
@@ -167,4 +167,4 @@ src/api/
 
 ## License
 
-[MIT](LICENSE) © 2026 MRBANK
+[MIT](LICENSE) © 2026 Brian099

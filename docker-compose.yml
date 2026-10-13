@@ -3,7 +3,7 @@ services:
     # 默认从 GitHub Container Registry 拉预构建镜像(推荐,新用户不用装 build 工具链)。
     # 想改成从源码本地构建,把下面的 image 注释掉、启用 build 段即可,或者直接
     # `docker compose build` 覆盖同名 tag。
-    image: ghcr.io/mrbanke/class-schedule:latest
+    image: ghcr.io/brian099/class-schedule:latest
     # build:
     #   context: .
     #   args:

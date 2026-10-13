@@ -7,6 +7,9 @@ dist
 # 一起排掉,导致镜像里构建时 Could not resolve './data/schedule'。前导 / 锚定到构建上下文根
 /data
 /.data
+# 再显式兜底放行源码数据目录,避免不同 Docker 版本对前导 / 的处理差异
+!src/data
+!src/data/**
 .git
 .gitignore
 *.log

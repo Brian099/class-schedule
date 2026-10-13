@@ -24,8 +24,9 @@ dist-ssr
 *.sw?
 
 # 服务端数据目录(课表/备忘/附件/账号,勿提交)
-data
-.data
+# 前导 / 锚定到仓库根:裸写 data 会连 src/data/(课表/科目默认数据源)一起忽略掉
+/data
+/.data
 
 # 本地下载的源码压缩包
 class-schedule-main.zip

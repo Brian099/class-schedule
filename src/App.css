@@ -2160,7 +2160,8 @@
     min-height: 30px;
   }
   .schedule-today-frame {
-    border-radius: 10px;
+    /* 窄屏 chip 圆角变 10px,外框同步收小 */
+    border-radius: calc(10px + var(--frame-pad-y));
   }
   .subject-icon {
     display: none !important;
@@ -2886,7 +2887,7 @@
   --grid-cols: var(--grid-lead) repeat(var(--visible-days, 5), minmax(0, 1fr));
   --grid-gap-x: 8px;
   --grid-gap-y: 10px;
-  --grid-pad-top: 6px;
+  --grid-pad-top: 12px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -2897,8 +2898,8 @@
 /* 当天课程外框:绝对定位覆盖「节次列右侧、当天那一列」,
    高度贯穿表头与全部节次,用圆角矩形把当天的课整体框起来 */
 .schedule-today-frame {
-  --frame-pad-x: 3px;
-  --frame-pad-y: 4px;
+  --frame-pad-x: 6px;
+  --frame-pad-y: 7px;
   position: absolute;
   top: calc(var(--grid-pad-top) - var(--frame-pad-y));
   bottom: calc(0px - var(--frame-pad-y));
@@ -2914,8 +2915,9 @@
       var(--visible-days, 5) + var(--frame-pad-x) * 2
   );
   border: 2px solid var(--grape);
-  /* 与 .subject-chip 的圆角保持一致 */
-  border-radius: 12px;
+  /* 外框比课程(chip 圆角 12px)外扩 --frame-pad-y,
+     圆角同步加大,两条弧线才同心、四周留白才均匀 */
+  border-radius: calc(12px + var(--frame-pad-y));
   background: rgba(169, 123, 245, 0.06);
   pointer-events: none;
   z-index: 2;
